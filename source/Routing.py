@@ -45,6 +45,38 @@ def create_data_model():
     return data
 
 
+def preprocess_data(data):
+    max_capacity = max(data["vehicle_capacities"])
+
+    valid_nodes = []
+
+    # Sempre manter o depósito
+    valid_nodes.append(0)
+
+    # Filtrar nós válidos
+    for i in range(1, len(data["demands"])):
+        if data["demands"][i] <= max_capacity:
+            valid_nodes.append(i)
+        else:
+            print(f"Removendo nó {i} (demanda {data['demands'][i]} > capacidade máxima)")
+
+    # Criar nova matriz de distância filtrada
+    new_matrix = []
+    for i in valid_nodes:
+        row = []
+        for j in valid_nodes:
+            row.append(data["distance_matrix"][i][j])
+        new_matrix.append(row)
+
+    # Criar novas demandas
+    new_demands = [data["demands"][i] for i in valid_nodes]
+
+    # Atualizar data
+    data["distance_matrix"] = new_matrix
+    data["demands"] = new_demands
+
+    return data
+
 def print_solution(data, manager, routing, assignment):
     # Prints assignment on console.
     print(f"Objective: {assignment.ObjectiveValue()}\n")
@@ -90,6 +122,8 @@ def main():
     # Solve the CVRP problem.
     # Instantiate the data problem.
     data = create_data_model()
+
+    data = preprocess_data(data)
     # Create the routing index manager.
     manager = pywrapcp.RoutingIndexManager(
         len(data["distance_matrix"]), data["num_vehicles"], data["depot"]
@@ -127,19 +161,24 @@ def main():
         "Capacity",
     )
     # Allow to drop nodes.
-    penalty = 1000
-    for node in range(1, len(data["distance_matrix"])):
-        routing.AddDisjunction([manager.NodeToIndex(node)], penalty)
+    penalty = sum(max(row) for row in data["distance_matrix"])
+    # penalty = max(data["distance_matrix"] * 10)
+    for node in range(len(data["distance_matrix"])):
+        if node == data["depot"]:
+            continue
+        routing.AddDisjunction([node], penalty)
 
     # Setting first solution heuristic. I am using the cheapest path metric as a baseline
     search_parameters = pywrapcp.DefaultRoutingSearchParameters()
     search_parameters.first_solution_strategy = (
-        routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
+        routing_enums_pb2.FirstSolutionStrategy.SAVINGS
     )
     search_parameters.local_search_metaheuristic = (
         routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
     )
-    search_parameters.time_limit.FromSeconds(5) # set time limit to 5 seconds
+    search_parameters.guided_local_search_lambda_coefficient = 0.1
+
+    search_parameters.time_limit.FromSeconds(20) # set time limit to 20 seconds
 
     # Solve the problem.
     assignment = routing.SolveWithParameters(search_parameters)

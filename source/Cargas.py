@@ -130,7 +130,8 @@ def print_optimized_loads_result(load, x):
     print(f"Total packed volume: {total_volume}\n\n")
     print(f"------------------------------------------------------------------\n\n") # <-- This line exists only to help in formatting
 
+if __name__ == "__main__":
+    get_optimized_loads(num_vehicles=5, num_items=50)
 
-get_optimized_loads(num_vehicles=5, num_items = 50)
 
 
