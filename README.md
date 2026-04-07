@@ -3,6 +3,8 @@ Repository created for the project related to automating truck routing, this rep
 
 As of now, this repository only contains dummy data for testing the functions
 
+This repository is going to be used as a Undergraduate Thesis for Igor Cirne Borges de Oliveira
+
 ## Programs
 
 This application currently has three functioning programs: Cargas and Routing
