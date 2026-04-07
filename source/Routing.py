@@ -1,5 +1,9 @@
 from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
+import random
+import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
+import networkx as nx
 import Cargas
 
 
@@ -42,15 +46,82 @@ def create_data_model():
     data["vehicle_capacities"] = optimized_weights
     data["num_vehicles"] = len(optimized_weights)
     data["depot"] = 0
+    data["coordinates"] = generate_coordinates(len(data["distance_matrix"]))
+
     return data
 
+def generate_coordinates(n):
+    return [(random.randint(0, 100), random.randint(0, 100)) for _ in range(n)]
+
+def get_routes(data, manager, routing, assignment):
+    routes = []
+
+    for vehicle_id in range(data["num_vehicles"]):
+        if not routing.IsVehicleUsed(assignment, vehicle_id):
+            continue
+
+        index = routing.Start(vehicle_id)
+        route = []
+
+        while not routing.IsEnd(index):
+            node = manager.IndexToNode(index)
+            route.append(node)
+            index = assignment.Value(routing.NextVar(index))
+
+        route.append(manager.IndexToNode(index))
+        routes.append(route)
+
+    return routes
+
+def plot_routes(data, routes):
+    G = nx.Graph()
+    coords = data["coordinates"]
+
+    for i, (x, y) in enumerate(coords):
+        G.add_node(i, pos=(x, y))
+
+    pos = nx.get_node_attributes(G, 'pos')
+
+    plt.figure(figsize=(10, 8))
+
+    colors = ["red", "blue", "green", "purple", "orange", "brown"]
+
+    legend_elements = []
+
+    # Drawing routes
+    for i, route in enumerate(routes):
+        color = colors[i % len(colors)]
+
+        edges = [(route[j], route[j+1]) for j in range(len(route)-1)]
+        nx.draw_networkx_edges(
+            G,
+            pos,
+            edgelist=edges,
+            edge_color=color,
+            width=2
+        )
+
+        # Function to add labels
+        legend_elements.append(
+            Line2D([0], [0], color=color, lw=2, label=f'Caminhão {i}')
+        )
+
+    # drawing nodes
+    nx.draw_networkx_nodes(G, pos, node_size=300)
+    nx.draw_networkx_labels(G, pos)
+
+    # Adding labels
+    plt.legend(handles=legend_elements)
+
+    plt.title("Rotas dos Caminhões (CVRP)")
+    plt.show()
 
 def preprocess_data(data):
     max_capacity = max(data["vehicle_capacities"])
 
     valid_nodes = []
 
-    # Sempre manter o depósito
+    # Always keep depot on nodes
     valid_nodes.append(0)
 
     # Filtrar nós válidos
@@ -60,7 +131,7 @@ def preprocess_data(data):
         else:
             print(f"Removendo nó {i} (demanda {data['demands'][i]} > capacidade máxima)")
 
-    # Criar nova matriz de distância filtrada
+    # Filtered distance matrix
     new_matrix = []
     for i in valid_nodes:
         row = []
@@ -68,10 +139,10 @@ def preprocess_data(data):
             row.append(data["distance_matrix"][i][j])
         new_matrix.append(row)
 
-    # Criar novas demandas
+    # Create new demands
     new_demands = [data["demands"][i] for i in valid_nodes]
 
-    # Atualizar data
+    # Update data
     data["distance_matrix"] = new_matrix
     data["demands"] = new_demands
 
@@ -186,6 +257,10 @@ def main():
     # Print solution on console.
     if assignment:
         print_solution(data, manager, routing, assignment)
+
+        # gerar e plotar rotas
+        routes = get_routes(data, manager, routing, assignment)
+        plot_routes(data, routes)
 
 
 if __name__ == "__main__":
