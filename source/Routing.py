@@ -74,7 +74,7 @@ def get_routes(data, manager, routing, assignment):
     return routes
 
 def plot_routes(data, routes):
-    G = nx.Graph()
+    G = nx.DiGraph()
     coords = data["coordinates"]
 
     for i, (x, y) in enumerate(coords):
@@ -85,35 +85,38 @@ def plot_routes(data, routes):
     plt.figure(figsize=(10, 8))
 
     colors = ["red", "blue", "green", "purple", "orange", "brown"]
-
     legend_elements = []
 
-    # Drawing routes
     for i, route in enumerate(routes):
         color = colors[i % len(colors)]
 
+
         edges = [(route[j], route[j+1]) for j in range(len(route)-1)]
+
         nx.draw_networkx_edges(
             G,
             pos,
             edgelist=edges,
             edge_color=color,
-            width=2
+            width=2,
+            arrows=True,
+            arrowstyle='-|>',
+            arrowsize=20
         )
 
-        # Function to add labels
         legend_elements.append(
-            Line2D([0], [0], color=color, lw=2, label=f'Caminhão {i}')
+            Line2D([0], [0], color=color, lw=2, label=f'Caminhão {i+1}')
         )
 
-    # drawing nodes
+    # Nós
     nx.draw_networkx_nodes(G, pos, node_size=300)
     nx.draw_networkx_labels(G, pos)
 
-    # Adding labels
-    plt.legend(handles=legend_elements)
+    # Destacar depósito
+    nx.draw_networkx_nodes(G, pos, nodelist=[0], node_color='yellow', node_size=500)
 
-    plt.title("Rotas dos Caminhões (CVRP)")
+    plt.legend(handles=legend_elements)
+    plt.title("Rotas dos Caminhões (CVRP - Direcionado)")
     plt.show()
 
 def preprocess_data(data):
