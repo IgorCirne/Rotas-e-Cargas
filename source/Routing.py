@@ -1,11 +1,51 @@
 from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
-import random
+import webbrowser
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import networkx as nx
 import Cargas
+import folium
+import requests
+import math
 
+def euclidean_distance(coord1, coord2):
+    return int(
+        math.sqrt(
+            (coord1[0] - coord2[0])**2 +
+            (coord1[1] - coord2[1])**2
+        ) * 100000  # escala para números inteiros
+    )
+
+def create_distance_matrix_from_coords(coords):
+    size = len(coords)
+    matrix = []
+
+    for i in range(size):
+        row = []
+        for j in range(size):
+            if i == j:
+                row.append(0)
+            else:
+                row.append(euclidean_distance(coords[i], coords[j]))
+        matrix.append(row)
+
+    return matrix
+def get_real_route(coords):
+    base_url = "http://router.project-osrm.org/route/v1/driving/"
+
+    # OSRM usa lon,lat (invertido!)
+    coord_str = ";".join([f"{lon},{lat}" for lat, lon in coords])
+
+    url = f"{base_url}{coord_str}?overview=full&geometries=geojson"
+
+    response = requests.get(url)
+    data = response.json()
+
+    route = data["routes"][0]["geometry"]["coordinates"]
+
+    # converter de volta para (lat, lon)
+    return [(lat, lon) for lon, lat in route]
 
 # All data model is using dummy data, but most of it should be hard-coded for performance
 def create_data_model():
@@ -15,43 +55,113 @@ def create_data_model():
     
     data = {}
     optimized_weights = Cargas.get_optimized_loads(num_vehicles=5)
-    
-    # The distance matrix works as follows: each line is related to a singular location, the number in the index is the distance of the original location to the respective location
-    # For example: The following matrix has 17 locations, on the index 1-4, you can see the distance from location 1 to location 4, as it can be observed, the main diagonal is 0
-    # Because the location's distance to itself is null.
-    # The matrix should be always hard-coded, if not, the program will take ages to run
-    data["distance_matrix"] = [
-        # Distance should be hard-coded between the 17 deposits, unless you hate performance
-        [0, 548, 776, 696, 582, 274, 502, 194, 308, 194, 536, 502, 388, 354, 468, 776, 662],
-        [548, 0, 684, 308, 194, 502, 730, 354, 696, 742, 1084, 594, 480, 674, 1016, 868, 1210],
-        [776, 684, 0, 992, 878, 502, 274, 810, 468, 742, 400, 1278, 1164, 1130, 788, 1552, 754],
-        [696, 308, 992, 0, 114, 650, 878, 502, 844, 890, 1232, 514, 628, 822, 1164, 560, 1358],
-        [582, 194, 878, 114, 0, 536, 764, 388, 730, 776, 1118, 400, 514, 708, 1050, 674, 1244],
-        [274, 502, 502, 650, 536, 0, 228, 308, 194, 240, 582, 776, 662, 628, 514, 1050, 708],
-        [502, 730, 274, 878, 764, 228, 0, 536, 194, 468, 354, 1004, 890, 856, 514, 1278, 480],
-        [194, 354, 810, 502, 388, 308, 536, 0, 342, 388, 730, 468, 354, 320, 662, 742, 856],
-        [308, 696, 468, 844, 730, 194, 194, 342, 0, 274, 388, 810, 696, 662, 320, 1084, 514],
-        [194, 742, 742, 890, 776, 240, 468, 388, 274, 0, 342, 536, 422, 388, 274, 810, 468],
-        [536, 1084, 400, 1232, 1118, 582, 354, 730, 388, 342, 0, 878, 764, 730, 388, 1152, 354],
-        [502, 594, 1278, 514, 400, 776, 1004, 468, 810, 536, 878, 0, 114, 308, 650, 274, 844],
-        [388, 480, 1164, 628, 514, 662, 890, 354, 696, 422, 764, 114, 0, 194, 536, 388, 730],
-        [354, 674, 1130, 822, 708, 628, 856, 320, 662, 388, 730, 308, 194, 0, 342, 422, 536],
-        [468, 1016, 788, 1164, 1050, 514, 514, 662, 320, 274, 388, 650, 536, 342, 0, 764, 194],
-        [776, 868, 1552, 560, 674, 1050, 1278, 742, 1084, 810, 1152, 274, 388, 422, 764, 0, 798],
-        [662, 1210, 754, 1358, 1244, 708, 480, 856, 514, 468, 354, 844, 730, 536, 194, 798, 0],
 
+    coords = [
+        (-5.7945, -35.2110),
+        (-5.8005, -35.2090),
+        (-5.8020, -35.2220),
+        (-5.7950, -35.2270),
+        (-5.7875, -35.2200),
+        (-5.7980, -35.2250),
+        (-5.7920, -35.2050),
     ]
-    # Demands for each of the places, as it stands, demand is based on weight
-    data["demands"] = [0, 1, 1, 3, 6, 3, 6, 10, 8, 1, 2, 1, 2, 6, 6, 6, 8]
+     # Demands for each of the places, as it stands, demand is based on weight
+    data["demands"] = [0, 2, 3, 4, 2, 5, 3]
     data["vehicle_capacities"] = optimized_weights
     data["num_vehicles"] = len(optimized_weights)
     data["depot"] = 0
-    data["coordinates"] = generate_coordinates(len(data["distance_matrix"]))
+
+    data["coordinates"] = coords
+    data["distance_matrix"] = create_distance_matrix_from_coords(coords)
 
     return data
 
-def generate_coordinates(n):
-    return [(random.randint(0, 100), random.randint(0, 100)) for _ in range(n)]
+def get_real_route_segmented(coords):
+    full_path = []
+
+    for i in range(len(coords) - 1):
+        segment = get_real_route([coords[i], coords[i+1]])
+        full_path.extend(segment)
+
+    return full_path
+
+def plot_real_routes_map(data, routes):
+    coords = data["coordinates"]
+
+    # Criar mapa
+    m = folium.Map(location=coords[0], zoom_start=13)
+
+    colors = ["red", "blue", "green", "purple", "orange"]
+
+    for i, route in enumerate(routes):
+        color = colors[i % len(colors)]
+
+        route_coords = [coords[node] for node in route]
+
+        try:
+            real_path = get_real_route_segmented(route_coords)
+
+            folium.PolyLine(
+                real_path,
+                color=color,
+                weight=5,
+                opacity=0.8,
+                tooltip=f"Caminhão {i+1}: {' → '.join(map(str, route))}"
+            ).add_to(m)
+
+        except Exception as e:
+            print(f"Erro real: {e}")
+
+        #  Marcadores com Ordem da rota
+        for stop_index, node in enumerate(route):
+            folium.Marker(
+                location=coords[node],
+                popup=f"Nó {node}",
+                icon=folium.DivIcon(
+                    html=f"""
+                    <div style="
+                        font-size: 12px;
+                        color: white;
+                        background-color: {color};
+                        border-radius: 50%;
+                        width: 20px;
+                        height: 20px;
+                        text-align: center;
+                        line-height: 20px;
+                    ">
+                        {stop_index}
+                    </div>
+                    """
+                )
+            ).add_to(m)
+
+   # Legenda
+    legend_html = """
+    <div style="
+    position: fixed; 
+    bottom: 50px; left: 50px; width: 200px; height: auto; 
+    background-color: white; 
+    border:2px solid grey; z-index:9999; 
+    font-size:14px;
+    padding: 10px;
+    ">
+    <b>Legenda</b><br>
+    """
+
+    for i in range(len(routes)):
+        color = colors[i % len(colors)]
+        legend_html += f"""
+        <i style="background:{color};width:10px;height:10px;display:inline-block;"></i>
+        Caminhão {i+1}<br>
+        """
+
+    legend_html += "</div>"
+
+    m.get_root().html.add_child(folium.Element(legend_html))
+
+    # Salvar e abrir
+    m.save("mapa_real.html")
+    webbrowser.open("mapa_real.html")
 
 def get_routes(data, manager, routing, assignment):
     routes = []
@@ -263,8 +373,8 @@ def main():
 
         # gerar e plotar rotas
         routes = get_routes(data, manager, routing, assignment)
-        plot_routes(data, routes)
-
+        plot_routes(data, routes) # grafo simples
+        plot_real_routes_map(data, routes) # Grafo geográfico real
 
 if __name__ == "__main__":
     main()

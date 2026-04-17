@@ -3,7 +3,6 @@ from ortools.linear_solver import pywraplp
 import random
 
 
-
 # Initializing the variables of the loads which are going into the routing problem
 def init_load(load, num_vehicles):
     num_items = 50
