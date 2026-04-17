@@ -209,7 +209,7 @@ def main():
     # Create and register a transit callback.
     def distance_callback(from_index, to_index):
         # Returns the distance between the two nodes.
-        # Convert from routing variable Index to distance matrix NodeIndex.
+        # Convert from routing variable Index to distance matrix Node Index.
         from_node = manager.IndexToNode(from_index)
         to_node = manager.IndexToNode(to_index)
         return data["distance_matrix"][from_node][to_node]
@@ -222,7 +222,7 @@ def main():
     # Add Capacity constraint.
     def demand_callback(from_index):
         # Returns the demand of the node.
-        # Convert from routing variable Index to demands NodeIndex.
+        # Convert from routing variable Index to demands Node Index.
         from_node = manager.IndexToNode(from_index)
         return data["demands"][from_node]
 
