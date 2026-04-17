@@ -61,7 +61,7 @@ def create_data_model():
         (-5.8005, -35.2090),
         (-5.8020, -35.2220),
         (-5.7950, -35.2270),
-        (-5.7875, -35.2200),
+        (-5.7905, -35.2200),
         (-5.7980, -35.2250),
         (-5.7920, -35.2050),
     ]
@@ -373,7 +373,7 @@ def main():
 
         # gerar e plotar rotas
         routes = get_routes(data, manager, routing, assignment)
-        plot_routes(data, routes) # grafo simples
+       # plot_routes(data, routes) # grafo simples
         plot_real_routes_map(data, routes) # Grafo geográfico real
 
 if __name__ == "__main__":
