@@ -7,7 +7,7 @@ This repository is going to be used as a Undergraduate Thesis for Igor Cirne Bor
 
 ## Programs
 
-This application currently has three functioning programs: Cargas and Routing
+This application currently has two functioning programs: Cargas and Routing
 
 Cargas is used to load vehicles with items, it maximizes value and is constrained by the maximum weight and volume of each truck. 
 
