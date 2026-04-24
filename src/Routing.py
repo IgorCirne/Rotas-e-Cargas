@@ -395,8 +395,8 @@ def main():
 
         # gerar e plotar rotas
         routes = get_routes(data, manager, routing, assignment)
-       # plot_routes(data, routes) # grafo simples
-        plot_real_routes_map(data, routes) # Grafo geográfico real
+       # plot_routes(data, routes)
+        plot_real_routes_map(data, routes)  # Grafo geográfico real
 
 if __name__ == "__main__":
     main()
