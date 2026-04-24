@@ -6,6 +6,7 @@ from matplotlib.lines import Line2D
 import networkx as nx
 import Cargas
 import folium
+from folium.plugins import AntPath
 import requests
 import math
 
@@ -54,7 +55,7 @@ def create_data_model():
     # Cargas still generates dummy data
     
     data = {}
-    optimized_weights = Cargas.get_optimized_loads(num_vehicles=5)
+    optimized_weights = Cargas.get_optimized_loads(num_vehicles=2)
 
     coords = [
         (-5.7945, -35.2110),
@@ -101,39 +102,60 @@ def plot_real_routes_map(data, routes):
         try:
             real_path = get_real_route_segmented(route_coords)
 
-            folium.PolyLine(
-                real_path,
+            popup = folium.Popup(
+                f"Caminhão {i + 1}: {' → '.join(map(str, route))}",
+                max_width=300
+            )
+            tooltip = folium.Tooltip(
+                f"Caminhão {i + 1}: {' → '.join(map(str, route))}"
+            )
+
+            ant_path = AntPath(
+                locations=real_path,
                 color=color,
                 weight=5,
                 opacity=0.8,
-                tooltip=f"Caminhão {i+1}: {' → '.join(map(str, route))}"
-            ).add_to(m)
+                delay=2500,
+            )
+
+            ant_path.add_child(tooltip)
+            ant_path.add_child(popup)
+            ant_path.add_to(m)
 
         except Exception as e:
             print(f"Erro real: {e}")
 
         #  Marcadores com Ordem da rota
         for stop_index, node in enumerate(route):
-            folium.Marker(
-                location=coords[node],
-                popup=f"Nó {node}",
-                icon=folium.DivIcon(
-                    html=f"""
-                    <div style="
-                        font-size: 12px;
-                        color: white;
-                        background-color: {color};
-                        border-radius: 50%;
-                        width: 20px;
-                        height: 20px;
-                        text-align: center;
-                        line-height: 20px;
-                    ">
-                        {stop_index}
-                    </div>
-                    """
-                )
-            ).add_to(m)
+            if node == data["depot"]:
+                # Depósito
+                folium.Marker(
+                    location=coords[node],
+                    popup="Depósito (0)",
+                    icon=folium.Icon(color="black", icon="home")
+                ).add_to(m)
+
+            else:
+                folium.Marker(
+                    location=coords[node],
+                    popup=f"Nó {node}",
+                    icon=folium.DivIcon(
+                        html=f"""
+                        <div style="
+                            font-size: 12px;
+                            color: white;
+                            background-color: {color};
+                            border-radius: 50%;
+                            width: 20px;
+                            height: 20px;
+                            text-align: center;
+                            line-height: 20px;
+                        ">
+                            {node}
+                        </div>
+                        """
+                    )
+                ).add_to(m)
 
    # Legenda
     legend_html = """
